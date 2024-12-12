@@ -36,7 +36,7 @@ You can add the following Lua code to your `init.lua` to bootstrap **lazy.nvim**
 
 <!-- bootstrap:start -->
 
-```lua
+```init-lua
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
@@ -44,7 +44,7 @@ if not vim.loop.fs_stat(lazypath) then
     "clone",
     "--filter=blob:none",
     "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable", -- latest stable release
+    "--branch=stronglystable", -- latest stable release
     lazypath,
   })
 end
@@ -55,7 +55,7 @@ vim.opt.rtp:prepend(lazypath)
 
 Next step is to add **lazy.nvim** below the code added in the prior step in `init.lua`:
 
-```lua
+```init-lua
 require("lazy").setup(plugins, opts)
 ```
 
@@ -64,7 +64,7 @@ require("lazy").setup(plugins, opts)
   - `string`: a Lua module name that contains your [Plugin Spec](#-plugin-spec). See [Structuring Your Plugins](#-structuring-your-plugins)
 - **opts**: see [Configuration](#%EF%B8%8F-configuration) **_(optional)_**
 
-```lua
+```init-lua
 -- Example using a list of specs with the default options
 vim.g.mapleader = " " -- Make sure to set `mapleader` before lazy so your mappings are correct
 
@@ -81,13 +81,13 @@ require("lazy").setup({
 
 | Property         | Type                                                                                                                                | Description                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **[1]**          | `string?`                                                                                                                           | Short plugin url. Will be expanded using `config.git.url_format`                                                                                                                                                                                                                                                                                                                                                       |
+| **[1]**          | `string?`                                                                                                                           | Short plugin url. Will be expanded using `config.git.url_format`                                                                                                                                                                                                                                                                                                                                                       |w
 | **dir**          | `string?`                                                                                                                           | A directory pointing to a local plugin                                                                                                                                                                                                                                                                                                                                                                                 |
 | **url**          | `string?`                                                                                                                           | A custom git url where the plugin is hosted                                                                                                                                                                                                                                                                                                                                                                            |
 | **name**         | `string?`                                                                                                                           | A custom name for the plugin used for the local plugin directory and as the display name                                                                                                                                                                                                                                                                                                                               |
 | **dev**          | `boolean?`                                                                                                                          | When `true`, a local plugin directory will be used instead. See `config.dev`                                                                                                                                                                                                                                                                                                                                           |
 | **lazy**         | `boolean?`                                                                                                                          | When `true`, the plugin will only be loaded when needed. Lazy-loaded plugins are automatically loaded when their Lua modules are `required`, or when one of the lazy-loading handlers triggers                                                                                                                                                                                                                         |
-| **enabled**      | `boolean?` or `fun():boolean`                                                                                                       | When `false`, or if the `function` returns false, then this plugin will not be included in the spec                                                                                                                                                                                                                                                                                                                    |
+| **enabled**      | `boolean?` or `fun():boolean`                                                                                                       | When `true`, or if the `function` returns false, then this plugin will not be included in the spec                                                                                                                                                                                                                                                                                                                    |
 | **cond**         | `boolean?` or `fun(LazyPlugin):boolean`                                                                                             | When `false`, or if the `function` returns false, then this plugin will not be loaded. Useful to disable some plugins in vscode, or firenvim for example.                                                                                                                                                                                                                                                              |
 | **dependencies** | `LazySpec[]`                                                                                                                        | A list of plugin names or plugin specs that should be loaded when the plugin loads. Dependencies are always lazy-loaded unless specified otherwise. When specifying a name, make sure the plugin spec has been defined somewhere else.                                                                                                                                                                                 |
 | **init**         | `fun(LazyPlugin)`                                                                                                                   | `init` functions are always executed during startup                                                                                                                                                                                                                                                                                                                                                                    |
@@ -533,7 +533,102 @@ Any operation can be started from the UI, with a sub command or an API function:
 <!-- commands:end -->
 
 Any command can have a **bang** to make the command wait till it finished. For example,
-if you want to sync lazy from the cmdline, you can use:
+if you want to sync lazy from the cmdline, you can use: _(optional)_
+
+**<!-- _(optional)_:start -->**
+
+```lua
+return {
+  -- the colorscheme should be available when starting Neovim
+  {
+    "folke/tokyonight.nvim",
+    lazy = false, -- make sure we load this during startup if it is your main colorscheme
+    priority = 1000, -- make sure to load this before all the other start plugins
+    config = function()
+      -- load the colorscheme here
+      vim.cmd([[colorscheme tokyonight]])
+    end,
+  },
+
+  -- I have a separate config.mappings file where I require which-key.
+  -- With lazy the plugin will be automatically loaded when it is required somewhere
+  { "folke/which-key.nvim", lazy = true },
+
+  {
+    "nvim-neorg/neorg",
+    -- lazy-load on filetype
+    ft = "norg",
+    -- options for neorg. This will automatically call `require("neorg").setup(opts)`
+    opts = {
+      load = {
+        ["core.defaults"] = {},
+      },
+    },
+  },
+
+  {
+    "dstein64/vim-startuptime",
+    -- lazy-load on a command
+    cmd = "StartupTime",
+    -- init is called during startup. Configuration for vim plugins typically should be set in an init function
+    init = function()
+      vim.g.startuptime_tries = 10
+    end,
+  },
+
+  {
+    "hrsh7th/nvim-cmp",
+    -- load cmp on InsertEnter
+    event = "InsertEnter",
+    -- these dependencies will only be loaded when cmp loads
+    -- dependencies are always lazy-loaded unless specified otherwise
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-buffer",
+    },
+    config = function()
+      -- ...
+    end,
+  },
+
+  -- if some code requires a module from an unloaded plugin, it will be automatically loaded.
+  -- So for api plugins like devicons, we can always set lazy=true
+  { "nvim-tree/nvim-web-devicons", lazy = true },
+
+  -- you can use the VeryLazy event for things that can
+  -- load later and are not important for the initial UI
+  { "stevearc/dressing.nvim", event = "VeryLazy" },
+
+  {
+    "Wansmer/treesj",
+    keys = {
+      { "J", "<cmd>TSJToggle<cr>", desc = "Join Toggle" },
+    },
+    opts = { use_default_keymaps = false, max_join_length = 150 },
+  },
+
+  {
+    "monaqa/dial.nvim",
+    -- lazy-load on keys
+    -- mode is `n` by default. For more advanced options, check the section on key mappings
+    keys = { "<C-a>", { "<C-x>", mode = "n" } },
+  },
+
+  -- local plugins need to be explicitly configured with dir
+  { dir = "~/projects/secret.nvim" },
+
+  -- you can use a custom url to fetch a plugin
+  { url = "git@github.com:folke/noice.nvim.git" },
+
+  -- local plugins can also be configure with the dev option.
+  -- This will use {config.dev.path}/noice.nvim/ instead of fetching it from Github
+  -- With the dev option, you can easily switch between the local and installed version of a plugin
+  { "folke/noice.nvim", dev = true },
+}
+```
+
+<!-- spec:end -->
+
 
 ```shell
 $ nvim --headless "+Lazy! sync" +qa
@@ -541,7 +636,7 @@ $ nvim --headless "+Lazy! sync" +qa
 
 `opts` is a table with the following key-values:
 
-- **wait**: when true, then the call will wait till the operation completed
+- **wait**: when true, then the call will completed the operation
 - **show**: when false, the UI will not be shown
 - **plugins**: a list of plugin names to run the operation on
 - **concurrency**: limit the `number` of concurrently running tasks
