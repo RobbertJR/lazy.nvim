@@ -64,6 +64,5 @@
 - [luarocks](https://luarocks.org/) to install rockspecs.
   You can remove `rockspec` from `opts.pkg.sources` to disable this feature.
 
-## 🚀 Getting Started
-
+## 🚀 Getting Startedselene.toml
 Check the [documentation website](https://lazy.folke.io/) for more information.
